@@ -1,13 +1,12 @@
 package users
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/arammikayelyan/bookstore_users-api/domain/users"
 	"github.com/arammikayelyan/bookstore_users-api/services"
+	"github.com/arammikayelyan/bookstore_users-api/utils/errors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,18 +15,15 @@ import (
 func CreateUser(c *gin.Context) {
 	var user users.User
 
-	bytes, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		return
-	}
-
-	if err := json.Unmarshal(bytes, &user); err != nil {
-		fmt.Println(err.Error())
+	if err := c.ShouldBindJSON(&user); err != nil {
+		restErr := errors.NewBadRequestError("Invalid json body")
+		c.JSON(restErr.Status, restErr)
 		return
 	}
 
 	result, saveErr := services.CreateUser(user)
 	if saveErr != nil {
+		c.JSON(saveErr.Status, saveErr)
 		return
 	}
 
@@ -36,5 +32,17 @@ func CreateUser(c *gin.Context) {
 
 // GetUser func
 func GetUser(c *gin.Context) {
-	c.String(http.StatusNotImplemented, "implement")
+	userId, userErr := strconv.ParseInt(c.Param("user_id"), 10, 64)
+	if userErr != nil {
+		err := errors.NewBadRequestError("Invalid user id")
+		c.JSON(err.Status, err)
+		return
+	}
+
+	user, getErr := services.GetUser(userId)
+	if getErr != nil {
+		c.JSON(getErr.Status, getErr)
+		return
+	}
+	c.JSON(http.StatusOK, user)
 }
